@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1C2820">
+  <title>Desk Widget</title>
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Desk Widget","short_name":"Desk Widget","display":"standalone","start_url":"/","background_color":"#1C2820","theme_color":"#1C2820","orientation":"landscape"}'>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #1C2820; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    const BG_DEEP = "#1C2820";
+    const BG     = "#273530";
+    const BORDER  = "rgba(180,205,192,0.1)";
+    const COPPER  = "#C07840";
+    const TEXT    = "#EDE9E1";
+    const MUTED   = "#6E8F82";
+    const UP      = "#6EB890";
+    const DOWN    = "#C07878";
+
+    /* ── API KEY SETUP SCREEN ── */
+    function SetupScreen({ onSave }) {
+      const [key, setKey] = useState("");
+      const [err, setErr] = useState("");
+      const [testing, setTesting] = useState(false);
+
+      const handleSave = async () => {
+        const trimmed = key.trim();
+        if (!trimmed.startsWith("sk-ant-")) {
+          setErr("Key should start with sk-ant-  —  double-check and try again.");
+          return;
+        }
+        setTesting(true);
+        setErr("");
+        try {
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": trimmed, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+            body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 8, messages: [{ role: "user", content: "hi" }] }),
+          });
+          if (!res.ok) { const d = await res.json(); throw new Error(d?.error?.message || res.status); }
+          localStorage.setItem("desk_widget_key", trimmed);
+          onSave(trimmed);
+        } catch (e) {
+          setErr("Could not verify key: " + e.message);
+        } finally {
+          setTesting(false);
+        }
+      };
+
+      return (
+        <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center",
+          background: `radial-gradient(ellipse at 20% 70%, rgba(35,65,48,0.6) 0%, transparent 55%),
+                       linear-gradient(160deg, ${BG_DEEP} 0%, ${BG} 60%, #203028 100%)` }}>
+          <div style={{ maxWidth:"340px", width:"88%", textAlign:"center" }}>
+            <div style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"1.6rem", fontWeight:300,
+              color:COPPER, letterSpacing:"0.18em", textTransform:"uppercase", opacity:0.9, marginBottom:"0.4rem" }}>
+              Desk Widget
+            </div>
+            <div style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.8rem", color:MUTED,
+              fontWeight:300, letterSpacing:"0.08em", marginBottom:"2rem", opacity:0.75 }}>
+              One-time setup
+            </div>
+
+            <div style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.72rem", color:TEXT,
+              fontWeight:300, lineHeight:1.7, opacity:0.8, marginBottom:"1.5rem", textAlign:"left" }}>
+              This widget fetches live market data using the Anthropic API.
+              Paste your API key below — it's saved only on this device.<br/><br/>
+              Get a free key at{" "}
+              <span style={{ color:COPPER }}>console.anthropic.com</span>
+              {" "}→ API Keys → Create Key.
+            </div>
+
+            <input
+              type="password"
+              placeholder="sk-ant-api03-..."
+              value={key}
+              onChange={e => { setKey(e.target.value); setErr(""); }}
+              style={{ width:"100%", padding:"0.65rem 0.9rem", background:"rgba(255,255,255,0.04)",
+                border:`1px solid ${BORDER}`, borderRadius:"3px", color:TEXT, fontSize:"0.7rem",
+                fontFamily:"'JetBrains Mono', monospace", letterSpacing:"0.05em", outline:"none",
+                marginBottom:"0.75rem" }}
+            />
+
+            {err && (
+              <div style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:"0.65rem", color:DOWN,
+                marginBottom:"0.75rem", opacity:0.9 }}>{err}</div>
+            )}
+
+            <button onClick={handleSave} disabled={testing || !key.trim()}
+              style={{ width:"100%", padding:"0.65rem", background:"none",
+                border:`1px solid rgba(192,120,64,0.4)`, borderRadius:"3px", color:COPPER,
+                fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.75rem",
+                letterSpacing:"0.3em", textTransform:"uppercase", cursor: testing ? "default" : "pointer",
+                opacity: testing ? 0.45 : 1 }}>
+              {testing ? "Verifying..." : "Save & Launch"}
+            </button>
+
+            <div style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:"0.58rem", color:MUTED,
+              marginTop:"1.2rem", opacity:0.5, lineHeight:1.6 }}>
+              Your key stays on this device and is only used to call api.anthropic.com.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── GAUGE DIAL ── */
+    function GaugeDial({ asset, fmtPrice, fmtChange }) {
+      const cx = 100, cy = 100;
+      const BEZEL_R = 96;
+      const FACE_R  = 62;
+      const START_DEG = 135, SWEEP = 270, MAX_PCT = 2.5;
+
+      const pct = asset.changePercent || 0;
+      const isUp = pct >= 0;
+      const chColor = isUp ? UP : DOWN;
+      const clampedPct = Math.max(-MAX_PCT, Math.min(MAX_PCT, pct));
+
+      const toXY = (deg, r) => {
+        const rad = (deg - 90) * Math.PI / 180;
+        return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+      };
+
+      const arc = (fromDeg, toDeg, r) => {
+        const f = toXY(fromDeg, r), t = toXY(toDeg, r);
+        const diff = toDeg - fromDeg;
+        return `M ${f.x.toFixed(2)} ${f.y.toFixed(2)} A ${r} ${r} 0 ${Math.abs(diff)>180?1:0} ${diff>=0?1:0} ${t.x.toFixed(2)} ${t.y.toFixed(2)}`;
+      };
+
+      const zeroDeg   = START_DEG + SWEEP / 2;
+      const needleDeg = START_DEG + ((clampedPct + MAX_PCT) / (MAX_PCT * 2)) * SWEEP;
+
+      const TICK_COUNT = 54;
+      const ticks = Array.from({ length: TICK_COUNT + 1 }, (_, i) => {
+        const deg = START_DEG + (i / TICK_COUNT) * SWEEP;
+        const major = i % 9 === 0, mid = i % 3 === 0;
+        return { o: toXY(deg, FACE_R-2), inn: toXY(deg, FACE_R-(major?13:mid?8:5)), major, mid };
+      });
+
+      const needleTip = toXY(needleDeg, FACE_R-18);
+      const nb1 = toXY(needleDeg+90, 5), nb2 = toXY(needleDeg-90, 5);
+      const rivets = [45,135,225,315].map(d => toXY(d, BEZEL_R-10));
+      const uid = asset.symbol.replace(/[^a-z0-9]/gi,"");
+
+      return (
+        <svg viewBox="0 0 200 200" style={{ width:"min(48vw,170px)", height:"min(48vw,170px)", display:"block", overflow:"visible" }}>
+          <defs>
+            <radialGradient id={"bz-"+uid} cx="30%" cy="22%" r="78%">
+              <stop offset="0%"   stopColor="#E8A855"/>
+              <stop offset="18%"  stopColor="#C8843C"/>
+              <stop offset="50%"  stopColor="#9A5E22"/>
+              <stop offset="78%"  stopColor="#7A4218"/>
+              <stop offset="100%" stopColor="#4E280A"/>
+            </radialGradient>
+            <radialGradient id={"fc-"+uid} cx="38%" cy="30%" r="68%">
+              <stop offset="0%"   stopColor="#18221C"/>
+              <stop offset="100%" stopColor="#050908"/>
+            </radialGradient>
+          </defs>
+
+          <circle cx="102" cy="103" r={BEZEL_R} fill="rgba(0,0,0,0.55)"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R} fill={"url(#bz-"+uid+")"}/>
+          <circle cx={cx} cy={cy} r={BEZEL_R}      fill="none" stroke="#3A1C06" strokeWidth="1.5" opacity="0.9"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R-4}    fill="none" stroke="#F0C070" strokeWidth="0.5" opacity="0.35"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R-8}    fill="none" stroke="#5A3010" strokeWidth="1"   opacity="0.6"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R-14}   fill="none" stroke="#F0C070" strokeWidth="0.4" opacity="0.2"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R-20}   fill="none" stroke="#3A1C06" strokeWidth="1.2" opacity="0.7"/>
+          <circle cx={cx} cy={cy} r={BEZEL_R-24}   fill="none" stroke="#C07840" strokeWidth="0.5" opacity="0.4"/>
+          <circle cx={cx} cy={cy} r={FACE_R+5}     fill="#1A1008"/>
+          <circle cx={cx} cy={cy} r={FACE_R+5}     fill="none" stroke="#3A1C06" strokeWidth="2"   opacity="0.95"/>
+          <circle cx={cx} cy={cy} r={FACE_R+3}     fill="none" stroke="#F0C070" strokeWidth="0.5" opacity="0.3"/>
+          <circle cx={cx} cy={cy} r={FACE_R+1}     fill="none" stroke="#7A4218" strokeWidth="1"   opacity="0.6"/>
+          <circle cx={cx} cy={cy} r={FACE_R}       fill={"url(#fc-"+uid+")"}/>
+
+          {rivets.map((p,i)=>(
+            <g key={i}>
+              <circle cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="4" fill="#6A3810" stroke="#C8843C" strokeWidth="0.8"/>
+              <circle cx={(p.x-1).toFixed(1)} cy={(p.y-1).toFixed(1)} r="1.2" fill="#F0C070" opacity="0.5"/>
+            </g>
+          ))}
+
+          {ticks.map(({o,inn,major,mid},i)=>(
+            <line key={i} x1={o.x.toFixed(2)} y1={o.y.toFixed(2)} x2={inn.x.toFixed(2)} y2={inn.y.toFixed(2)}
+              stroke={"rgba(192,120,64,"+(major?1:mid?0.6:0.3)+")"}
+              strokeWidth={major?1.6:mid?1:0.6} strokeLinecap="round"/>
+          ))}
+
+          <path d={arc(START_DEG, START_DEG+SWEEP, FACE_R-14)} fill="none" stroke="rgba(192,120,64,0.1)" strokeWidth="2.5" strokeLinecap="round"/>
+          {pct!==0&&<path d={arc(zeroDeg, needleDeg, FACE_R-14)} fill="none" stroke={chColor} strokeWidth="3" strokeLinecap="round" opacity="0.88"/>}
+
+          <polygon points={`${needleTip.x.toFixed(2)},${needleTip.y.toFixed(2)} ${nb1.x.toFixed(2)},${nb1.y.toFixed(2)} ${nb2.x.toFixed(2)},${nb2.y.toFixed(2)}`} fill={chColor} opacity="0.92"/>
+          <circle cx={cx} cy={cy} r="5.5" fill="#0A100C" stroke="#C8843C" strokeWidth="1.4"/>
+          <circle cx={cx} cy={cy} r="2"   fill="#E0A850" opacity="0.6"/>
+
+          <text x={cx} y={cy-20} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7.5" fontWeight="300" fill={COPPER} opacity="0.9" letterSpacing="3">{asset.symbol}</text>
+          <text x={cx} y={cy+8}  textAnchor="middle" fontFamily="'Rajdhani',Arial,sans-serif"        fontSize="22"  fontWeight="700" fill={TEXT}   letterSpacing="0.5">{fmtPrice(asset.symbol, asset.price)}</text>
+          <text x={cx} y={cy+20} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7"   fontWeight="300" fill={chColor} opacity="0.9" letterSpacing="0.8">
+            {isUp?"▲":"▼"} {Math.abs(pct).toFixed(2)}%  {fmtChange(asset.change, asset.symbol)}
+          </text>
+        </svg>
+      );
+    }
+
+    /* ── MAIN WIDGET ── */
+    function DeskWidget({ apiKey }) {
+      const [time, setTime]           = useState(new Date());
+      const [stocks, setStocks]       = useState(null);
+      const [loading, setLoading]     = useState(false);
+      const [lastUpdated, setLastUpdated] = useState(null);
+      const [error, setError]         = useState(null);
+
+      useEffect(() => {
+        const t = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      const fetchStocks = useCallback(async () => {
+        setLoading(true); setError(null);
+        try {
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "anthropic-dangerous-direct-browser-access": "true",
+            },
+            body: JSON.stringify({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 512,
+              system: `Financial data tool. Search for current prices. Return ONLY raw JSON, no markdown, no backticks.
+Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"change":22,"changePercent":0.43},{"symbol":"BTC","name":"Bitcoin","price":95000,"change":-500,"changePercent":-0.52}]}`,
+              messages: [{ role:"user", content:"Current S&P 500 index value and Bitcoin USD price, today's change and percent. JSON only." }],
+              tools: [{ type:"web_search_20250305", name:"web_search" }],
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error?.message || res.status);
+          const allText = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+          if (!allText) throw new Error("Empty response");
+          const clean = allText.replace(/```json|```/g,"").trim();
+          let parsed;
+          try { parsed = JSON.parse(clean); }
+          catch { const m = clean.match(/\{[\s\S]*"assets"[\s\S]*\}/); if(!m) throw new Error("No JSON"); parsed = JSON.parse(m[0]); }
+          if (!parsed?.assets?.length) throw new Error("No assets");
+          setStocks(parsed.assets);
+          setLastUpdated(new Date());
+        } catch(e) {
+          setError("Failed: "+e.message.slice(0,50));
+        } finally { setLoading(false); }
+      }, [apiKey]);
+
+      useEffect(() => {
+        fetchStocks();
+        const iv = setInterval(fetchStocks, 5*60*1000);
+        return () => clearInterval(iv);
+      }, [fetchStocks]);
+
+      const pad = n => String(n).padStart(2,"0");
+      const rawH = time.getHours();
+      const H    = String(rawH%12||12);
+      const M    = pad(time.getMinutes());
+      const AMPM = rawH < 12 ? "AM" : "PM";
+      const dateStr = time.toLocaleDateString("en-US",{ weekday:"long", month:"long", day:"numeric" });
+
+      const fmtPrice = (sym, price) => {
+        if (price==null) return "—";
+        if (sym==="BTC")     return "$"+Math.round(price).toLocaleString();
+        if (sym==="S&P 500") return Math.round(price).toLocaleString();
+        return "$"+price.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+      };
+      const fmtChange = (n, sym) => {
+        if (n==null) return "";
+        const pre = n>=0?"+":"";
+        if (sym==="BTC")     return pre+Math.round(n).toLocaleString();
+        if (sym==="S&P 500") return pre+Math.round(n).toLocaleString()+" pts";
+        return pre+n.toFixed(2);
+      };
+
+      return (
+        <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"stretch",
+          background:`radial-gradient(ellipse at 20% 70%, rgba(35,65,48,0.6) 0%, transparent 55%),
+                      radial-gradient(ellipse at 80% 25%, rgba(28,52,40,0.5) 0%, transparent 45%),
+                      linear-gradient(160deg,${BG_DEEP} 0%,${BG} 60%,#203028 100%)`,
+          fontFamily:"'JetBrains Mono','Courier New',monospace", color:TEXT,
+          position:"relative", overflow:"hidden" }}>
+
+          {/* Vignette */}
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+            background:"radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(0,0,0,0.35) 100%)" }}/>
+
+          {/* LEFT — Clock */}
+          <div style={{ flex:"1", display:"flex", flexDirection:"column", justifyContent:"center",
+            alignItems:"center", padding:"2rem 1.5rem", borderRight:`1px solid ${BORDER}`,
+            position:"relative", zIndex:1 }}>
+
+            <div style={{ display:"flex", alignItems:"center" }}>
+              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(3.5rem,10vw,7rem)",
+                fontWeight:700, letterSpacing:"0.02em", lineHeight:1, color:TEXT, userSelect:"none" }}>
+                {H}
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.35em", margin:"0 0.18em", paddingBottom:"0.15em" }}>
+                <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
+                <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
+              </div>
+              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(3.5rem,10vw,7rem)",
+                fontWeight:700, letterSpacing:"0.02em", lineHeight:1, color:TEXT, userSelect:"none" }}>
+                {M}
+              </div>
+              <div style={{ paddingTop:"0.5em", marginLeft:"0.3em" }}>
+                <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
+                  fontSize:"clamp(0.6rem,1.6vw,0.9rem)", fontWeight:300, color:COPPER,
+                  letterSpacing:"0.18em", opacity:0.7, userSelect:"none" }}>{AMPM}</span>
+              </div>
+            </div>
+
+            <div style={{ width:"36px", height:"1px",
+              background:`linear-gradient(90deg,transparent,${COPPER},transparent)`,
+              opacity:0.5, margin:"1.4rem 0" }}/>
+
+            <div style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
+              fontSize:"clamp(0.55rem,1.3vw,0.78rem)", color:COPPER, letterSpacing:"0.2em",
+              textTransform:"uppercase", opacity:0.75, fontWeight:300, textAlign:"center", userSelect:"none" }}>
+              {dateStr}
+            </div>
+          </div>
+
+          {/* RIGHT — Dials */}
+          <div style={{ flex:"2", display:"flex", flexDirection:"column", justifyContent:"center",
+            alignItems:"center", position:"relative", zIndex:1, overflow:"visible", padding:"0.5rem 0" }}>
+
+            {loading&&!stocks&&(
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", color:MUTED,
+                fontSize:"0.65rem", letterSpacing:"0.3em", opacity:0.6 }}>
+                Acquiring signal...
+              </div>
+            )}
+
+            {stocks?.length>0&&(
+              <div style={{ position:"relative", width:"340px", height:"220px" }}>
+                <div style={{ position:"absolute", top:0, left:0, zIndex:3 }}>
+                  <GaugeDial asset={stocks[0]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
+                </div>
+                {stocks[1]&&(
+                  <div style={{ position:"absolute", top:"32px", left:"158px", zIndex:2 }}>
+                    <GaugeDial asset={stocks[1]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {error&&(
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", color:DOWN,
+                fontSize:"0.55rem", letterSpacing:"0.1em", opacity:0.8, textAlign:"center", marginTop:"0.5rem" }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              width:"88%", marginTop:"0.6rem" }}>
+              {lastUpdated&&(
+                <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"0.45rem",
+                  color:MUTED, letterSpacing:"0.15em", opacity:0.4 }}>
+                  {lastUpdated.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+                </div>
+              )}
+              <button onClick={fetchStocks} disabled={loading} style={{ background:"none",
+                border:"1px solid rgba(192,120,64,0.2)", color:COPPER, padding:"0.18rem 0.6rem",
+                fontSize:"0.45rem", letterSpacing:"0.28em", cursor:loading?"default":"pointer",
+                opacity:loading?0.3:0.55, fontFamily:"'Cormorant Garamond',serif",
+                borderRadius:"2px", textTransform:"uppercase" }}>
+                {loading?"···":"Refresh"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── ROOT ── */
+    function App() {
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem("desk_widget_key") || "");
+
+      if (!apiKey) return <SetupScreen onSave={setApiKey}/>;
+      return <DeskWidget apiKey={apiKey}/>;
+    }
+
+    ReactDOM.render(<App/>, document.getElementById("root"));
+  </script>
+</body>
+</html>
