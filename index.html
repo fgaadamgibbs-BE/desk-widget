@@ -160,7 +160,7 @@
       const uid = asset.symbol.replace(/[^a-z0-9]/gi,"");
 
       return (
-        <svg viewBox="0 0 200 200" style={{ width:"min(48vw,170px)", height:"min(48vw,170px)", display:"block", overflow:"visible" }}>
+        <svg viewBox="0 0 200 200" style={{ width:"min(52vw,195px)", height:"min(52vw,195px)", display:"block", overflow:"visible" }}>
           <defs>
             <radialGradient id={"bz-"+uid} cx="30%" cy="22%" r="78%">
               <stop offset="0%"   stopColor="#F0C84A"/>
@@ -225,6 +225,36 @@
       const [loading, setLoading]     = useState(false);
       const [lastUpdated, setLastUpdated] = useState(null);
       const [error, setError]         = useState(null);
+      const [weather, setWeather]     = useState(null);
+
+      useEffect(() => {
+        const t = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      // Weather via wttr.in — no API key needed
+      useEffect(() => {
+        fetch("https://wttr.in/?format=j1")
+          .then(r => r.json())
+          .then(d => {
+            const c = d.current_condition?.[0];
+            if (!c) return;
+            setWeather({
+              tempF: Math.round(parseFloat(c.temp_F)),
+              desc: c.weatherDesc?.[0]?.value || "",
+            });
+          })
+          .catch(() => {});
+      }, []);
+
+      // Market open: NYSE Mon-Fri 9:30-16:00 ET
+      const marketOpen = (() => {
+        const now = new Date();
+        const et = new Date(now.toLocaleString("en-US", { timeZone:"America/New_York" }));
+        const day = et.getDay();
+        const mins = et.getHours() * 60 + et.getMinutes();
+        return day >= 1 && day <= 5 && mins >= 570 && mins < 960;
+      })();
 
       useEffect(() => {
         const t = setInterval(() => setTime(new Date()), 1000);
@@ -324,34 +354,43 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
             position:"relative", zIndex:1 }}>
 
             <div style={{ display:"flex", alignItems:"center" }}>
-              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(3.5rem,10vw,7rem)",
+              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(4.5rem,13vw,9rem)",
                 fontWeight:700, letterSpacing:"0.02em", lineHeight:1, color:TEXT, userSelect:"none" }}>
                 {H}
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.35em", margin:"0 0.18em", paddingBottom:"0.15em" }}>
-                <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
-                <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
+                <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
+                <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:COPPER, opacity:0.65 }}/>
               </div>
-              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(3.5rem,10vw,7rem)",
+              <div style={{ fontFamily:"'Rajdhani','Arial',sans-serif", fontSize:"clamp(4.5rem,13vw,9rem)",
                 fontWeight:700, letterSpacing:"0.02em", lineHeight:1, color:TEXT, userSelect:"none" }}>
                 {M}
               </div>
               <div style={{ paddingTop:"0.5em", marginLeft:"0.3em" }}>
                 <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
-                  fontSize:"clamp(0.6rem,1.6vw,0.9rem)", fontWeight:300, color:COPPER,
+                  fontSize:"clamp(0.7rem,1.8vw,1rem)", fontWeight:300, color:COPPER,
                   letterSpacing:"0.18em", opacity:0.7, userSelect:"none" }}>{AMPM}</span>
               </div>
             </div>
 
             <div style={{ width:"36px", height:"1px",
               background:`linear-gradient(90deg,transparent,${COPPER},transparent)`,
-              opacity:0.5, margin:"1.4rem 0" }}/>
+              opacity:0.5, margin:"1.2rem 0" }}/>
 
             <div style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
-              fontSize:"clamp(0.55rem,1.3vw,0.78rem)", color:COPPER, letterSpacing:"0.2em",
+              fontSize:"clamp(0.6rem,1.4vw,0.82rem)", color:COPPER, letterSpacing:"0.2em",
               textTransform:"uppercase", opacity:0.75, fontWeight:300, textAlign:"center", userSelect:"none" }}>
               {dateStr}
             </div>
+
+            {/* Weather */}
+            {weather && (
+              <div style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
+                fontSize:"clamp(0.55rem,1.2vw,0.72rem)", color:MUTED, letterSpacing:"0.12em",
+                opacity:0.7, fontWeight:300, textAlign:"center", marginTop:"0.5rem", userSelect:"none" }}>
+                {weather.tempF}°F · {weather.desc}
+              </div>
+            )}
           </div>
 
           {/* RIGHT — Dials */}
@@ -366,12 +405,12 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
             )}
 
             {stocks?.length>0&&(
-              <div style={{ position:"relative", width:"340px", height:"220px" }}>
+              <div style={{ position:"relative", width:"390px", height:"260px" }}>
                 <div style={{ position:"absolute", top:0, left:"40px", zIndex:3 }}>
                   <GaugeDial asset={stocks[0]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
                 </div>
                 {stocks[1]&&(
-                  <div style={{ position:"absolute", top:"32px", left:"178px", zIndex:2 }}>
+                  <div style={{ position:"absolute", top:"38px", left:"200px", zIndex:2 }}>
                     <GaugeDial asset={stocks[1]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
                   </div>
                 )}
@@ -386,20 +425,33 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
             )}
 
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-              width:"88%", marginTop:"0.6rem" }}>
-              {lastUpdated&&(
+              width:"88%", marginTop:"0.4rem" }}>
+              {/* Market status */}
+              <div style={{ display:"flex", alignItems:"center", gap:"0.4rem" }}>
+                <div style={{ width:"6px", height:"6px", borderRadius:"50%",
+                  background: marketOpen ? UP : COPPER,
+                  boxShadow: marketOpen ? `0 0 6px ${UP}` : "none",
+                  opacity: marketOpen ? 0.9 : 0.5 }}/>
                 <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"0.45rem",
-                  color:MUTED, letterSpacing:"0.15em", opacity:0.4 }}>
-                  {lastUpdated.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+                  color:MUTED, letterSpacing:"0.2em", opacity:0.55, textTransform:"uppercase" }}>
+                  {marketOpen ? "Market Open" : "Market Closed"}
                 </div>
-              )}
-              <button onClick={fetchStocks} disabled={loading} style={{ background:"none",
-                border:"1px solid rgba(192,120,64,0.2)", color:COPPER, padding:"0.18rem 0.6rem",
-                fontSize:"0.45rem", letterSpacing:"0.28em", cursor:loading?"default":"pointer",
-                opacity:loading?0.3:0.55, fontFamily:"'Cormorant Garamond',serif",
-                borderRadius:"2px", textTransform:"uppercase" }}>
-                {loading?"···":"Refresh"}
-              </button>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:"0.8rem" }}>
+                {lastUpdated&&(
+                  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"0.45rem",
+                    color:MUTED, letterSpacing:"0.15em", opacity:0.4 }}>
+                    {lastUpdated.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}
+                  </div>
+                )}
+                <button onClick={fetchStocks} disabled={loading} style={{ background:"none",
+                  border:"1px solid rgba(192,120,64,0.2)", color:COPPER, padding:"0.18rem 0.6rem",
+                  fontSize:"0.45rem", letterSpacing:"0.28em", cursor:loading?"default":"pointer",
+                  opacity:loading?0.3:0.55, fontFamily:"'Cormorant Garamond',serif",
+                  borderRadius:"2px", textTransform:"uppercase" }}>
+                  {loading?"···":"Refresh"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
