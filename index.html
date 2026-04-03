@@ -163,11 +163,11 @@
         <svg viewBox="0 0 200 200" style={{ width:"min(48vw,170px)", height:"min(48vw,170px)", display:"block", overflow:"visible" }}>
           <defs>
             <radialGradient id={"bz-"+uid} cx="30%" cy="22%" r="78%">
-              <stop offset="0%"   stopColor="#E8A855"/>
-              <stop offset="18%"  stopColor="#C8843C"/>
-              <stop offset="50%"  stopColor="#9A5E22"/>
-              <stop offset="78%"  stopColor="#7A4218"/>
-              <stop offset="100%" stopColor="#4E280A"/>
+              <stop offset="0%"   stopColor="#F0C84A"/>
+              <stop offset="18%"  stopColor="#D4A030"/>
+              <stop offset="50%"  stopColor="#A07820"/>
+              <stop offset="78%"  stopColor="#705010"/>
+              <stop offset="100%" stopColor="#3C2808"/>
             </radialGradient>
             <radialGradient id={"fc-"+uid} cx="38%" cy="30%" r="68%">
               <stop offset="0%"   stopColor="#18221C"/>
@@ -209,9 +209,9 @@
           <circle cx={cx} cy={cy} r="5.5" fill="#0A100C" stroke="#C8843C" strokeWidth="1.4"/>
           <circle cx={cx} cy={cy} r="2"   fill="#E0A850" opacity="0.6"/>
 
-          <text x={cx} y={cy-20} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7.5" fontWeight="300" fill={COPPER} opacity="0.9" letterSpacing="3">{asset.symbol}</text>
-          <text x={cx} y={cy+8}  textAnchor="middle" fontFamily="'Rajdhani',Arial,sans-serif"        fontSize="22"  fontWeight="700" fill={TEXT}   letterSpacing="0.5">{fmtPrice(asset.symbol, asset.price)}</text>
-          <text x={cx} y={cy+20} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7"   fontWeight="300" fill={chColor} opacity="0.9" letterSpacing="0.8">
+          <text x={cx} y={cy-38} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7.5" fontWeight="300" fill={COPPER} opacity="0.9" letterSpacing="3">{asset.symbol}</text>
+          <text x={cx} y={cy-12} textAnchor="middle" fontFamily="'Rajdhani',Arial,sans-serif"        fontSize="22"  fontWeight="700" fill={TEXT}   letterSpacing="0.5">{fmtPrice(asset.symbol, asset.price)}</text>
+          <text x={cx} y={cy+34} textAnchor="middle" fontFamily="'Cormorant Garamond',Georgia,serif" fontSize="7"   fontWeight="300" fill={chColor} opacity="0.9" letterSpacing="0.8">
             {isUp?"▲":"▼"} {Math.abs(pct).toFixed(2)}%  {fmtChange(asset.change, asset.symbol)}
           </text>
         </svg>
@@ -260,7 +260,7 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
           try { parsed = JSON.parse(clean); }
           catch { const m = clean.match(/\{[\s\S]*"assets"[\s\S]*\}/); if(!m) throw new Error("No JSON"); parsed = JSON.parse(m[0]); }
           if (!parsed?.assets?.length) throw new Error("No assets");
-          setStocks(parsed.assets);
+          setStocks(parsed.assets.map(normalizeAsset));
           setLastUpdated(new Date());
         } catch(e) {
           setError("Failed: "+e.message.slice(0,50));
@@ -279,6 +279,18 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
       const M    = pad(time.getMinutes());
       const AMPM = rawH < 12 ? "AM" : "PM";
       const dateStr = time.toLocaleDateString("en-US",{ weekday:"long", month:"long", day:"numeric" });
+
+      const normalizeAsset = (asset) => {
+        const sym = asset.symbol;
+        const isIndex = sym.includes("GSPC") || sym.includes("SPX") || sym.includes("S&P") || sym === "SPY";
+        const isBTC = sym.includes("BTC");
+        return {
+          ...asset,
+          symbol: isIndex ? "S&P 500" : isBTC ? "BTC" : sym,
+          name: isIndex ? "S&P 500 Index" : asset.name,
+          price: isIndex ? (asset.price > 1000 ? asset.price : asset.price * 10) : asset.price,
+        };
+      };
 
       const fmtPrice = (sym, price) => {
         if (price==null) return "—";
@@ -308,7 +320,7 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
 
           {/* LEFT — Clock */}
           <div style={{ flex:"1", display:"flex", flexDirection:"column", justifyContent:"center",
-            alignItems:"center", padding:"2rem 1.5rem", borderRight:`1px solid ${BORDER}`,
+            alignItems:"center", padding:"2rem 1rem 2rem 2.5rem", borderRight:`1px solid ${BORDER}`,
             position:"relative", zIndex:1 }}>
 
             <div style={{ display:"flex", alignItems:"center" }}>
@@ -335,7 +347,6 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
               background:`linear-gradient(90deg,transparent,${COPPER},transparent)`,
               opacity:0.5, margin:"1.4rem 0" }}/>
 
-            
             <div style={{ fontFamily:"'Cormorant Garamond',Georgia,serif",
               fontSize:"clamp(0.55rem,1.3vw,0.78rem)", color:COPPER, letterSpacing:"0.2em",
               textTransform:"uppercase", opacity:0.75, fontWeight:300, textAlign:"center", userSelect:"none" }}>
@@ -356,11 +367,11 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
 
             {stocks?.length>0&&(
               <div style={{ position:"relative", width:"340px", height:"220px" }}>
-                <div style={{ position:"absolute", top:0, left:0, zIndex:3 }}>
+                <div style={{ position:"absolute", top:0, left:"40px", zIndex:3 }}>
                   <GaugeDial asset={stocks[0]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
                 </div>
                 {stocks[1]&&(
-                  <div style={{ position:"absolute", top:"32px", left:"158px", zIndex:2 }}>
+                  <div style={{ position:"absolute", top:"32px", left:"178px", zIndex:2 }}>
                     <GaugeDial asset={stocks[1]} fmtPrice={fmtPrice} fmtChange={fmtChange}/>
                   </div>
                 )}
@@ -407,4 +418,3 @@ Format: {"assets":[{"symbol":"S&P 500","name":"S&P 500 Index","price":5600,"chan
   </script>
 </body>
 </html>
- 
